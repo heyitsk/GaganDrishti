@@ -4,7 +4,7 @@ GaganDrishti follows a modular architecture to detect and protect
 against cloud misconfigurations.
 
 ## Overview
-CloudSet Shield follows a simple modular architecture focused on clarity,
+GaganDrishti follows a simple modular architecture focused on clarity,
 security, and ease of demonstration.
 
 ## Components
