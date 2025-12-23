@@ -13,3 +13,9 @@
 ~ NOT auto-fix anything
 
 ~ NOT store credentials
+
+# NOTE 
+
+Public storage → data exposed
+Open SSH → server compromised
+Admin role → full cloud takeover
