@@ -1,29 +1,33 @@
 # GAGANDRISHTI
-GaganDrishti – A cloud misconfiguration detection and protection platform
+GaganDrishti – A preventive cloud security platform designed to detect
+security risks caused by misconfigured cloud services.
+
 
 why this name - Gagandrishti represents deep visibility into cloud configurations to identify security risks before they become breaches.
+# Gagandrishti
 
 ## Problem
-Cloud breaches often occur due to simple configuration mistakes such as:
-- Publicly exposed storage
-- Open management ports
-- Over-permissive access roles
+A large number of cloud security breaches occur due to simple configuration
+mistakes such as public storage, exposed management ports, and excessive
+access permissions.
 
 ## Solution
-GaganDrishti automatically scans cloud configurations, identifies
-misconfigurations, assigns risk severity, and provides clear remediation
-guidance.
+Gagandrishti provides visibility into cloud configurations, identifies
+dangerous misconfigurations, prioritizes risks, and suggests clear remediation
+steps.
 
 ## Key Features
 - Cloud misconfiguration detection
-- Risk-based severity analysis
-- Clear remediation recommendations
-- Simple and intuitive dashboard
+- Risk severity analysis
+- Actionable remediation guidance
+- Security-focused dashboard
 
 ## Team Roles
-- Security Team Lead: Threat modeling, detection rules, risk analysis
+- Security Team Lead: Threat modeling, detection logic, risk analysis
 - Backend Developer: Cloud scanning engine (Node.js)
 - UI/UX Designer: Dashboard and visualization
 
 ## Status
-🚧 MVP in development
+🚧 MVP under active development
+
+
