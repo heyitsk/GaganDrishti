@@ -1,6 +1,8 @@
 # GAGANDRISHTI
 GaganDrishti – A cloud misconfiguration detection and protection platform
 
+why this name - Gagandrishti represents deep visibility into cloud configurations to identify security risks before they become breaches.
+
 ## Problem
 Cloud breaches often occur due to simple configuration mistakes such as:
 - Publicly exposed storage
