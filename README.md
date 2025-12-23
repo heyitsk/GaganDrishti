@@ -2,9 +2,7 @@
 GaganDrishti – A preventive cloud security platform designed to detect
 security risks caused by misconfigured cloud services.
 
-
 why this name - Gagandrishti represents deep visibility into cloud configurations to identify security risks before they become breaches.
-# Gagandrishti
 
 ## Problem
 A large number of cloud security breaches occur due to simple configuration
