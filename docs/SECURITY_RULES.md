@@ -8,7 +8,7 @@ and **actionable remediation**, aligned with common cloud breach patterns.
 
 Rules are based on real-world attack scenarios and security best practices.
 
-# [ALERTS]
+# ALERTS
 
 Rule 1: Public Cloud Storage
 
