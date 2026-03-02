@@ -1,70 +1,45 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { registerSchema } = require('../utils/validationSchemas');
+const { registerSchema, loginSchema } = require('../utils/validationSchemas');
+const authService = require('../services/authService');
 
 // Register new user
 const register = async (req, res) => {
-  const { username, password } = req.body;
-
   // Validate input using Zod
   const validationResult = registerSchema.safeParse(req.body);
-  
   if (!validationResult.success) {
     const errorMessages = validationResult.error.issues.map(err => err.message).join(', ');
     return res.status(400).json({ error: errorMessages });
   }
 
+  const { username, password } = validationResult.data;
+
   try {
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
-    }
-
-    const newUser = new User({ username, password });
-    await newUser.save();
-
-    res.status(201).json({ message: 'User registered successfully' });
+    const result = await authService.registerUser(username, password);
+    return res.status(201).json(result);
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ error: error.message || 'Server error' });
   }
 };
 
 // Login user
 const login = async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
+  // Validate input using Zod
+  const validationResult = loginSchema.safeParse(req.body);
+  if (!validationResult.success) {
+    const errorMessages = validationResult.error.issues.map(err => err.message).join(', ');
+    return res.status(400).json({ error: errorMessages });
   }
 
+  const { username, password } = validationResult.data;
+
   try {
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    const payload = { id: user.id, username: user.username };
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'your_jwt_secret_key', {
-      expiresIn: '60s'
-    });
-
-    res.json({
-      success: true,
-      token: 'Bearer ' + token,
-      user: {
-        id: user.id,
-        username: user.username
-      }
-    });
+    const result = await authService.loginUser(username, password);
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ error: error.message || 'Server error' });
   }
 };
 
