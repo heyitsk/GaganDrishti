@@ -1,9 +1,10 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const passport = require("passport");
-const connectCluster = require("./config/database");
-const authRoutes = require("./routes/authRoutes");
+import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
+import cors from "cors";
+import passport from "passport";
+import connectCluster from "./config/database";
+import authRoutes from "./routes/authRoutes";
 
 const app = express();
 
