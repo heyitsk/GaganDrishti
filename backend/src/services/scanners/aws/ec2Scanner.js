@@ -1,7 +1,8 @@
 import {
   EC2Client,
   DescribeSecurityGroupsCommand,
-  EC2ServiceException,
+    EC2ServiceException,
+    MonitorInstancesCommand
 } from "@aws-sdk/client-ec2";
 import dotenv from "dotenv";
 dotenv.config();
@@ -162,9 +163,7 @@ export async function scanEC2SecurityGroups() {
     return { error: parseEC2Error(caught) };
   }
 }
-
-
 // ── Quick local test ──────────────────────────────────────────────────────────
-scanEC2SecurityGroups().then((result) => {
-  console.log(JSON.stringify(result, null, 2));
-});
+// scanEC2SecurityGroups().then((result) => {
+//   console.log(JSON.stringify(result, null, 2));
+// });
