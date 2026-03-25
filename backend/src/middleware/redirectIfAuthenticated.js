@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 /**
  * Middleware to block already-authenticated users from hitting
@@ -26,4 +26,4 @@ const redirectIfAuthenticated = (req, res, next) => {
   }
 };
 
-module.exports = { redirectIfAuthenticated };
+export { redirectIfAuthenticated };

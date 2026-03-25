@@ -184,7 +184,8 @@ async function checkMFAAndLogin(client, userName) {
   const [loginResult, mfaResult] = await Promise.allSettled([
     client.send(new GetLoginProfileCommand({ UserName: userName })),
     client.send(new ListMFADevicesCommand({ UserName: userName })),
-  ]);
+  ]); //promise.allsettled works even if eotheir one fails or accepted but promise.all would throw error as soon as either one fails
+  
 
   // GetLoginProfile throws NoSuchEntityException if no console password exists.
   const hasConsoleLogin =
@@ -351,8 +352,7 @@ export async function scanIAM() {
   }
 }
 
-
 // ── Quick local test ──────────────────────────────────────────────────────────
-scanIAM().then((result) => {
-  console.log(JSON.stringify(result, null, 2));
-});
+// scanIAM().then((result) => {
+//   console.log(JSON.stringify(result, null, 2));
+// });

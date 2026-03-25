@@ -3,8 +3,10 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import passport from "passport";
-import connectCluster from "./config/database";
-import authRoutes from "./routes/authRoutes";
+import connectCluster from "./config/database.js";
+import authRoutes from "./routes/authRoutes.js";
+import awsScanRoutes from "./routes/awsScanRoutes.js";
+import configurePassport from "./config/passport.js";
 
 const app = express();
 
@@ -13,11 +15,12 @@ app.use(express.json());
 app.use(cors());
 
 // Passport configuration
-require("./config/passport")(passport);
+configurePassport(passport);
 app.use(passport.initialize());
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/aws/scan", awsScanRoutes);
 
 // Database connection and server start
 connectCluster()

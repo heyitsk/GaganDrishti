@@ -1,5 +1,5 @@
-const { registerSchema, loginSchema } = require('../utils/validationSchemas');
-const authService = require('../services/authService');
+import { registerSchema, loginSchema } from '../utils/validationSchemas.js';
+import authService from '../services/authService.js';
 
 // Register new user
 const register = async (req, res) => {
@@ -43,7 +43,4 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = {
-  register,
-  login
-};
+export { register, login };

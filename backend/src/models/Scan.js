@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const scanSchema = new mongoose.Schema({
   userId: {
@@ -78,4 +78,4 @@ scanSchema.methods.markFailed = async function () {
   return this.save();
 };
 
-module.exports = mongoose.model('Scan', scanSchema);
+export default mongoose.model('Scan', scanSchema);

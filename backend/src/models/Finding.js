@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const findingSchema = new mongoose.Schema({
   scanId: {
@@ -82,4 +82,4 @@ findingSchema.methods.ignore = async function () {
   return this.save();
 };
 
-module.exports = mongoose.model('Finding', findingSchema);
+export default mongoose.model('Finding', findingSchema);

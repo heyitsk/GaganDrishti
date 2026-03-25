@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const crypto = require('crypto');
+import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 // Encryption helpers — uses AES-256-CBC
 // ENCRYPTION_KEY must be a 32-byte hex string in .env
@@ -105,4 +105,4 @@ cloudCredentialsSchema.methods.deactivate = async function () {
   return this.save();
 };
 
-module.exports = mongoose.model('CloudCredentials', cloudCredentialsSchema);
+export default mongoose.model('CloudCredentials', cloudCredentialsSchema);

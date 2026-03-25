@@ -177,16 +177,16 @@ function checkStorageEncryption(instance) {
  *
  * @returns {Promise<object>} Structured security report or { error } on failure
  */
-export async function scanRDSInstances() {
+export async function scanRDSInstances(instanceId) {
   const rdsClient = createRDSClient();
   const ec2Client = createEC2Client();
 
   try {
-    // Fetch the specific DB instance.
-    // TODO: Replace hardcoded identifier with user-supplied value.
-    const command = new DescribeDBInstancesCommand({
-      DBInstanceIdentifier: "database-1",
-    });
+    // If instanceId is provided, scan that specific instance; otherwise scan all.
+    const commandParams = instanceId
+      ? { DBInstanceIdentifier: instanceId }
+      : {};
+    const command = new DescribeDBInstancesCommand(commandParams);
     const response = await rdsClient.send(command);
     const dbInstances = response.DBInstances ?? [];
 
@@ -227,9 +227,3 @@ export async function scanRDSInstances() {
     return { error: parseRDSError(caught) };
   }
 }
-
-
-// ── Quick local test ──────────────────────────────────────────────────────────
-scanRDSInstances().then((result) => {
-  console.log(JSON.stringify(result, null, 2));
-});

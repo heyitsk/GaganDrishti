@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 // Registration validation schema
 const registerSchema = z.object({
@@ -77,7 +77,7 @@ const updateFindingStatusSchema = z.object({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-module.exports = {
+export {
   // Auth
   registerSchema,
   loginSchema,

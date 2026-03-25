@@ -1,5 +1,5 @@
 // require("dotenv").config();  
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 // console.log(process.env.MONGODB_URI);
 
 const connectCluster = async () => {
@@ -11,4 +11,4 @@ const connectCluster = async () => {
     throw error;
   }
 };
-module.exports = connectCluster;
+export default connectCluster;
