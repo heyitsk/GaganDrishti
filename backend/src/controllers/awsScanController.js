@@ -3,6 +3,30 @@ import { scanS3BucketEncryption } from '../services/scanners/aws/s3EncryptionSca
 import { scanEC2SecurityGroups } from '../services/scanners/aws/ec2Scanner.js';
 import { scanIAM } from '../services/scanners/aws/iamScanner.js';
 import { scanRDSInstances } from '../services/scanners/aws/rdsScanner.js';
+import CloudCredentials from '../models/CloudCredentials.js';
+import { resolveCredentials } from '../services/credentialManager.js';
+
+// ─── Helper: Resolve credentials from credentialId (if provided) ─────────────
+/**
+ * Looks up a CloudCredentials document by ID + userId, then resolves
+ * usable AWS credentials (role → AssumeRole, keys → decrypt).
+ * Returns null if no credentialId is provided (scanners will use .env fallback).
+ */
+async function getCredentials(credentialId, userId) {
+  if (!credentialId) return null;
+
+  const account = await CloudCredentials.findOne({
+    _id: credentialId,
+    userId,
+    isActive: true,
+  });
+
+  if (!account) {
+    throw new Error('Account not found or inactive');
+  }
+
+  return await resolveCredentials(account);
+}
 
 // ─── S3 Public Access ─────────────────────────────────────────────────────────
 export const scanS3PublicAccess = async (req, res) => {
@@ -13,11 +37,12 @@ export const scanS3PublicAccess = async (req, res) => {
   }
 
   try {
-    const result = await scanS3BucketPublicAccess(bucketName);
+    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
+    const result = await scanS3BucketPublicAccess(bucketName, creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('S3 Public Access scan error:', error);
-    return res.status(500).json({ error: 'Failed to scan S3 bucket public access' });
+    return res.status(500).json({ error: error.message || 'Failed to scan S3 bucket public access' });
   }
 };
 
@@ -30,47 +55,50 @@ export const scanS3Encryption = async (req, res) => {
   }
 
   try {
-    const result = await scanS3BucketEncryption(bucketName);
+    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
+    const result = await scanS3BucketEncryption(bucketName, creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('S3 Encryption scan error:', error);
-    return res.status(500).json({ error: 'Failed to scan S3 bucket encryption' });
+    return res.status(500).json({ error: error.message || 'Failed to scan S3 bucket encryption' });
   }
 };
 
 // ─── EC2 Security Groups ─────────────────────────────────────────────────────
 export const scanEC2 = async (req, res) => {
   try {
-    const result = await scanEC2SecurityGroups();
+    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
+    const result = await scanEC2SecurityGroups(creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('EC2 scan error:', error);
-    return res.status(500).json({ error: 'Failed to scan EC2 security groups' });
+    return res.status(500).json({ error: error.message || 'Failed to scan EC2 security groups' });
   }
 };
 
 // ─── IAM ──────────────────────────────────────────────────────────────────────
 export const scanIAMUsers = async (req, res) => {
   try {
-    const result = await scanIAM();
+    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
+    const result = await scanIAM(creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('IAM scan error:', error);
-    return res.status(500).json({ error: 'Failed to scan IAM' });
+    return res.status(500).json({ error: error.message || 'Failed to scan IAM' });
   }
 };
 
 // ─── RDS ──────────────────────────────────────────────────────────────────────
 export const scanRDS = async (req, res) => {
-  // instanceId is optional — if omitted, all instances are scanned
   const { instanceId } = req.params;
 
   try {
-    const result = await scanRDSInstances(instanceId);
+    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
+    const result = await scanRDSInstances(instanceId, creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('RDS scan error:', error);
-    return res.status(500).json({ error: 'Failed to scan RDS instances' });
+    return res.status(500).json({ error: error.message || 'Failed to scan RDS instances' });
   }
 };
 
@@ -78,30 +106,37 @@ export const scanRDS = async (req, res) => {
 /**
  * Runs all AWS scanners in parallel.
  * Request body (all fields optional):
- *   { s3BucketName: string, rdsInstanceId: string }
+ *   { s3BucketName: string, rdsInstanceId: string, credentialId: string }
  *
  * Scanners that require input are skipped (marked "skipped") if the
  * corresponding field is not provided.
+ *
+ * If credentialId is provided, credentials are resolved from the user's
+ * stored account (role → AssumeRole, keys → decrypt). Otherwise, .env
+ * fallback is used.
  */
 export const scanAll = async (req, res) => {
-  const { s3BucketName, rdsInstanceId } = req.body ?? {};
-
-  // Build a map of scanner name → Promise (or null if skipped)
-  const scanners = {
-    s3PublicAccess: s3BucketName
-      ? scanS3BucketPublicAccess(s3BucketName)
-      : null,
-    s3Encryption: s3BucketName
-      ? scanS3BucketEncryption(s3BucketName)
-      : null,
-    ec2SecurityGroups: scanEC2SecurityGroups(),
-    iam: scanIAM(),
-    rds: rdsInstanceId
-      ? scanRDSInstances(rdsInstanceId)
-      : scanRDSInstances(),  // scans all instances when no ID provided
-  };
+  const { s3BucketName, rdsInstanceId, credentialId } = req.body ?? {};
 
   try {
+    // Resolve credentials once for all scanners
+    const creds = await getCredentials(credentialId, req.user._id);
+
+    // Build a map of scanner name → Promise (or null if skipped)
+    const scanners = {
+      s3PublicAccess: s3BucketName
+        ? scanS3BucketPublicAccess(s3BucketName, creds)
+        : null,
+      s3Encryption: s3BucketName
+        ? scanS3BucketEncryption(s3BucketName, creds)
+        : null,
+      ec2SecurityGroups: scanEC2SecurityGroups(creds),
+      iam: scanIAM(creds),
+      rds: rdsInstanceId
+        ? scanRDSInstances(rdsInstanceId, creds)
+        : scanRDSInstances(undefined, creds),
+    };
+
     // Separate runnable scanners from skipped ones
     const entries = Object.entries(scanners);
     const runnableEntries = entries.filter(([, promise]) => promise !== null);
@@ -143,6 +178,6 @@ export const scanAll = async (req, res) => {
     });
   } catch (error) {
     console.error('Scan All error:', error);
-    return res.status(500).json({ error: 'Failed to run scan-all' });
+    return res.status(500).json({ error: error.message || 'Failed to run scan-all' });
   }
 };

@@ -16,18 +16,39 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required')
 });
 
-// ─── CloudCredentials Schemas ─────────────────────────────────────────────────
+// ─── CloudCredentials Schemas (Dual-Mode) ─────────────────────────────────────
 
-const cloudCredentialsSchema = z.object({
-  userId: z.string().min(1, 'User ID is required'),
+// Base fields shared by both auth types
+const accountBaseSchema = {
+  accountName: z.string().max(50, 'Account name must not exceed 50 characters').optional().default(''),
   provider: z.enum(['AWS', 'Azure', 'GCP'], {
     errorMap: () => ({ message: 'Provider must be AWS, Azure, or GCP' })
   }),
+  region: z.string().min(1, 'Region is required'),
+};
+
+// Role mode — only requires roleArn
+const roleAccountSchema = z.object({
+  ...accountBaseSchema,
+  authType: z.literal('role'),
+  roleArn: z.string()
+    .min(1, 'Role ARN is required')
+    .regex(/^arn:aws:iam::\d{12}:role\//, 'Must be a valid IAM Role ARN (arn:aws:iam::<account-id>:role/<name>)'),
+});
+
+// Keys mode — requires accessKeyId + secretAccessKey
+const keysAccountSchema = z.object({
+  ...accountBaseSchema,
+  authType: z.literal('keys'),
   accessKeyId: z.string().min(1, 'Access Key ID is required'),
   secretAccessKey: z.string().min(1, 'Secret Access Key is required'),
-  region: z.string().min(1, 'Region is required'),
-  isActive: z.boolean().optional().default(true)
 });
+
+// Discriminated union on authType
+const addAccountSchema = z.discriminatedUnion('authType', [
+  roleAccountSchema,
+  keysAccountSchema,
+]);
 
 // ─── Scan Schemas ─────────────────────────────────────────────────────────────
 
@@ -81,8 +102,8 @@ export {
   // Auth
   registerSchema,
   loginSchema,
-  // CloudCredentials
-  cloudCredentialsSchema,
+  // CloudCredentials (Dual-Mode)
+  addAccountSchema,
   // Scan
   scanSchema,
   updateScanSchema,

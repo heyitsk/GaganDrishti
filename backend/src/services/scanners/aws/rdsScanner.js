@@ -11,26 +11,34 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // ─── Client Factories ─────────────────────────────────────────────────────────
-// TODO: Replace env vars with user-supplied credentials when frontend is ready.
-function createRDSClient() {
+// Accepts optional credentials object; falls back to .env if not provided.
+function buildCredentials(credentials) {
+  return credentials
+    ? {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        ...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+      }
+    : {
+        accessKeyId: process.env.ACCESS_KEY,
+        secretAccessKey: process.env.SECRET_ACCESS_KEY,
+      };
+}
+
+function createRDSClient(credentials) {
   return new RDSClient({
     region: process.env.AWS_REGION || "ap-south-1",
-    credentials: {
-      accessKeyId: process.env.ACCESS_KEY,
-      secretAccessKey: process.env.SECRET_ACCESS_KEY,
-    },
+    credentials: buildCredentials(credentials),
   });
 }
 
-function createEC2Client() {
+function createEC2Client(credentials) {
   return new EC2Client({
     region: process.env.AWS_REGION || "ap-south-1",
-    credentials: {
-      accessKeyId: process.env.ACCESS_KEY,
-      secretAccessKey: process.env.SECRET_ACCESS_KEY,
-    },
+    credentials: buildCredentials(credentials),
   });
 }
+
 
 // ─── Helper: Normalize RDS errors ────────────────────────────────────────────
 function parseRDSError(caught) {
@@ -177,9 +185,9 @@ function checkStorageEncryption(instance) {
  *
  * @returns {Promise<object>} Structured security report or { error } on failure
  */
-export async function scanRDSInstances(instanceId) {
-  const rdsClient = createRDSClient();
-  const ec2Client = createEC2Client();
+export async function scanRDSInstances(instanceId, credentials) {
+  const rdsClient = createRDSClient(credentials);
+  const ec2Client = createEC2Client(credentials);
 
   try {
     // If instanceId is provided, scan that specific instance; otherwise scan all.

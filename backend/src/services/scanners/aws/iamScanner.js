@@ -13,16 +13,23 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // ─── Client Factory ───────────────────────────────────────────────────────────
-// TODO: Replace env vars with user-supplied credentials when frontend is ready.
-function createIAMClient() {
+// Accepts optional credentials object; falls back to .env if not provided.
+function createIAMClient(credentials) {
   return new IAMClient({
     region: process.env.AWS_REGION || "ap-south-1",
-    credentials: {
-      accessKeyId: process.env.ACCESS_KEY,
-      secretAccessKey: process.env.SECRET_ACCESS_KEY,
-    },
+    credentials: credentials
+      ? {
+          accessKeyId: credentials.accessKeyId,
+          secretAccessKey: credentials.secretAccessKey,
+          ...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+        }
+      : {
+          accessKeyId: process.env.ACCESS_KEY,
+          secretAccessKey: process.env.SECRET_ACCESS_KEY,
+        },
   });
 }
+
 
 // ─── Helper: Normalize IAM errors ────────────────────────────────────────────
 function parseIAMError(caught) {
@@ -320,8 +327,8 @@ async function scanUser(client, user) {
  *
  * @returns {Promise<object>} Structured security report or { error } on failure
  */
-export async function scanIAM() {
-  const client = createIAMClient();
+export async function scanIAM(credentials) {
+  const client = createIAMClient(credentials);
 
   try {
     // ── Step 1: Account-level root MFA check ─────────────────────────────────

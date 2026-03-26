@@ -7,14 +7,20 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // ─── S3 Client ───────────────────────────────────────────────────────────────
-// TODO: Replace env vars with user-supplied credentials when frontend is ready.
-function createS3Client() {
+// Accepts optional credentials object; falls back to .env if not provided.
+function createS3Client(credentials) {
   return new S3Client({
     region: process.env.AWS_REGION || "ap-south-1",
-    credentials: {
-      accessKeyId: process.env.ACCESS_KEY,
-      secretAccessKey: process.env.SECRET_ACCESS_KEY,
-    },
+    credentials: credentials
+      ? {
+          accessKeyId: credentials.accessKeyId,
+          secretAccessKey: credentials.secretAccessKey,
+          ...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+        }
+      : {
+          accessKeyId: process.env.ACCESS_KEY,
+          secretAccessKey: process.env.SECRET_ACCESS_KEY,
+        },
   });
 }
 
@@ -30,8 +36,8 @@ function createS3Client() {
  * @param {string} bucketName - The S3 bucket name to scan
  * @returns {Promise<object>} Structured encryption scan result
  */
-export async function scanS3BucketEncryption(bucketName) {
-  const client = createS3Client();
+export async function scanS3BucketEncryption(bucketName, credentials) {
+  const client = createS3Client(credentials);
 
   try {
     const data = await client.send(

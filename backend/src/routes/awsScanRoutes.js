@@ -19,7 +19,7 @@ router.get('/s3/public-access/:bucketName', scanS3PublicAccess);
 router.get('/s3/encryption/:bucketName', scanS3Encryption);
 router.get('/ec2', scanEC2);
 router.get('/iam', scanIAMUsers);
-router.get('/rds/:instanceId?', scanRDS);    // instanceId is optional
+router.get('/rds{/:instanceId}', scanRDS);    // instanceId is optional
 
 // ─── Unified Scan ─────────────────────────────────────────────────────────────
 router.post('/all', scanAll);

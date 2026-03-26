@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 
-// Encryption helpers — uses AES-256-CBC
+// ─── Encryption helpers — AES-256-CBC ─────────────────────────────────────────
 // ENCRYPTION_KEY must be a 32-byte hex string in .env
 const ALGORITHM = 'aes-256-cbc';
 
@@ -39,20 +39,62 @@ const cloudCredentialsSchema = new mongoose.Schema({
     required: [true, 'User ID is required'],
     index: true
   },
+  accountName: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Account name must not exceed 50 characters'],
+    default: ''
+  },
   provider: {
     type: String,
     enum: ['AWS', 'Azure', 'GCP'],
     required: [true, 'Provider is required']
   },
-  // Stored encrypted as "iv:ciphertext"
+  // ─── Dual-mode auth ─────────────────────────────────────────────────────────
+  // 'role'  → store only roleArn, use STS AssumeRole at scan-time (recommended)
+  // 'keys'  → store encrypted accessKeyId + secretAccessKey (fallback)
+  authType: {
+    type: String,
+    enum: ['role', 'keys'],
+    required: [true, 'Auth type is required']
+  },
+
+  // Role mode fields
+  roleArn: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function (v) {
+        // Required only when authType is 'role'
+        if (this.authType === 'role') return !!v && v.length > 0;
+        return true;
+      },
+      message: 'Role ARN is required when authType is "role"'
+    }
+  },
+
+  // Keys mode fields — stored encrypted as "iv:ciphertext"
   accessKeyId: {
     type: String,
-    required: [true, 'Access Key ID is required']
+    validate: {
+      validator: function (v) {
+        if (this.authType === 'keys') return !!v && v.length > 0;
+        return true;
+      },
+      message: 'Access Key ID is required when authType is "keys"'
+    }
   },
   secretAccessKey: {
     type: String,
-    required: [true, 'Secret Access Key is required']
+    validate: {
+      validator: function (v) {
+        if (this.authType === 'keys') return !!v && v.length > 0;
+        return true;
+      },
+      message: 'Secret Access Key is required when authType is "keys"'
+    }
   },
+
   region: {
     type: String,
     required: [true, 'Region is required'],
@@ -68,33 +110,62 @@ const cloudCredentialsSchema = new mongoose.Schema({
   }
 });
 
-// ─── Pre-save: encrypt sensitive fields ──────────────────────────────────────
+// ─── Pre-save: encrypt sensitive fields (keys mode only) ─────────────────────
 
-cloudCredentialsSchema.pre('save', function (next) {
-  // Only encrypt if the field was modified (prevents double-encrypting)
-  if (this.isModified('accessKeyId')) {
-    this.accessKeyId = encrypt(this.accessKeyId);
+cloudCredentialsSchema.pre('save', function () {
+  if (this.authType === 'keys') {
+    if (this.isModified('accessKeyId')) {
+      this.accessKeyId = encrypt(this.accessKeyId);
+    }
+    if (this.isModified('secretAccessKey')) {
+      this.secretAccessKey = encrypt(this.secretAccessKey);
+    }
   }
-  if (this.isModified('secretAccessKey')) {
-    this.secretAccessKey = encrypt(this.secretAccessKey);
-  }
-  next();
 });
 
 // ─── Instance Methods ─────────────────────────────────────────────────────────
 
 /**
- * Returns the decrypted access key ID in plain text.
+ * Returns the decrypted access key ID (keys mode only).
  */
 cloudCredentialsSchema.methods.getDecryptedAccessKeyId = function () {
+  if (this.authType !== 'keys') throw new Error('Cannot decrypt — authType is not "keys"');
   return decrypt(this.accessKeyId);
 };
 
 /**
- * Returns the decrypted secret access key in plain text.
+ * Returns the decrypted secret access key (keys mode only).
  */
 cloudCredentialsSchema.methods.getDecryptedSecretAccessKey = function () {
+  if (this.authType !== 'keys') throw new Error('Cannot decrypt — authType is not "keys"');
   return decrypt(this.secretAccessKey);
+};
+
+/**
+ * Returns a safe JSON representation — credentials masked, never raw encrypted blobs.
+ */
+cloudCredentialsSchema.methods.toSafeJSON = function () {
+  const obj = {
+    _id: this._id,
+    userId: this.userId,
+    accountName: this.accountName,
+    provider: this.provider,
+    authType: this.authType,
+    region: this.region,
+    isActive: this.isActive,
+    createdAt: this.createdAt,
+  };
+
+  if (this.authType === 'role') {
+    obj.roleArn = this.roleArn;
+  } else {
+    // Show only last 4 chars of the access key ID
+    const decryptedKeyId = this.getDecryptedAccessKeyId();
+    obj.accessKeyId = '****' + decryptedKeyId.slice(-4);
+    obj.secretAccessKey = '********';
+  }
+
+  return obj;
 };
 
 /**

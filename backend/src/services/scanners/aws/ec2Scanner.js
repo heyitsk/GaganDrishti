@@ -8,14 +8,20 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // ─── EC2 Client ───────────────────────────────────────────────────────────────
-// TODO: Replace env vars with user-supplied credentials when frontend is ready.
-function createEC2Client() {
+// Accepts optional credentials object; falls back to .env if not provided.
+function createEC2Client(credentials) {
   return new EC2Client({
     region: process.env.AWS_REGION || "ap-south-1",
-    credentials: {
-      accessKeyId: process.env.ACCESS_KEY,
-      secretAccessKey: process.env.SECRET_ACCESS_KEY,
-    },
+    credentials: credentials
+      ? {
+          accessKeyId: credentials.accessKeyId,
+          secretAccessKey: credentials.secretAccessKey,
+          ...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+        }
+      : {
+          accessKeyId: process.env.ACCESS_KEY,
+          secretAccessKey: process.env.SECRET_ACCESS_KEY,
+        },
   });
 }
 
@@ -127,8 +133,8 @@ function analyseSecurityGroup(sg) {
  *
  * @returns {Promise<object>} Structured scan result or { error } on failure
  */
-export async function scanEC2SecurityGroups() {
-  const client = createEC2Client();
+export async function scanEC2SecurityGroups(credentials) {
+  const client = createEC2Client(credentials);
 
   try {
     // Pass an empty filters array so AWS returns ALL security groups.

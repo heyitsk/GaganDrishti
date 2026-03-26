@@ -6,6 +6,7 @@ import passport from "passport";
 import connectCluster from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
 import awsScanRoutes from "./routes/awsScanRoutes.js";
+import accountRoutes from "./routes/accountRoutes.js";
 import configurePassport from "./config/passport.js";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(passport.initialize());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/aws/scan", awsScanRoutes);
+app.use("/api/accounts", accountRoutes);
 
 // Database connection and server start
 connectCluster()
