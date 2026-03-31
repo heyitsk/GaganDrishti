@@ -217,3 +217,28 @@ export async function scanS3BucketPublicAccess(bucketName, credentials) {
 // scanS3BucketPublicAccess("publik-access-bucket").then((result) => {
 //   console.log(JSON.stringify(result, null, 2));
 // });
+
+//raw output
+// {
+//   "bucketName": "publik-access-bucket",
+//   "isPublic": true,
+//   "reason": "Bucket is publicly accessible via: ACL.",
+//   "details": {
+//     "policy": {
+//       "isPublic": false,
+//       "channelBlocked": true,
+//       "error": null
+//     },
+//     "acl": {
+//       "isPublic": true,
+//       "channelBlocked": false,
+//       "error": null
+//     },
+//     "publicAccessBlock": {
+//       "blockPublicPolicy": true,
+//       "restrictPublicBuckets": true,
+//       "blockPublicAcls": false,
+//       "ignorePublicAcls": false,
+//       "error": null
+//     }
+//   }

@@ -363,3 +363,64 @@ export async function scanIAM(credentials) {
 // scanIAM().then((result) => {
 //   console.log(JSON.stringify(result, null, 2));
 // });
+
+//raw output 
+// {
+//   "scannedAt": "2026-03-31T05:01:01.923Z",
+//   "accountChecks": {
+//     "rootMFA": {
+//       "isEnabled": true,
+//       "isFlagged": false,
+//       "reason": "Root account MFA is enabled — OK."
+//     }
+//   },
+//   "totalUsers": 1,
+//   "flaggedUsers": 1,
+//   "users": [
+//     {
+//       "userName": "aws-sdk-user",
+//       "userId": "AIDAWYX3LJP3CHKBPPDZM",
+//       "createdAt": "2026-03-03T18:58:13.000Z",
+//       "isFlagged": true,
+//       "checks": {
+//         "accessKeys": {
+//           "totalActive": 1,
+//           "keyDetails": [
+//             {
+//               "accessKeyId": "AKIAWYX3LJP3IYIUZHOD",
+//               "createAgeDays": 27,
+//               "isStale": false,
+//               "lastUsedDate": "2026-03-31T04:14:00.000Z",
+//               "lastUsedAgeDays": 0,
+//               "lastUsedService": "sts",
+//               "isNeverUsed": false
+//             }
+//           ],
+//           "staleKeys": [],
+//           "neverUsedKeys": [],
+//           "isFlagged": false,
+//           "reason": "1 active key(s), all within rotation policy — OK."
+//         },
+//         "mfaAndLogin": {
+//           "hasConsoleLogin": true,
+//           "hasMFA": false,
+//           "mfaDeviceCount": 0,
+//           "isFlagged": true,
+//           "reason": "Console login enabled but NO MFA device configured — HIGH RISK. Enable MFA immediately."
+//         },
+//         "attachedPolicies": {
+//           "policies": [
+//             {
+//               "policyName": "IAMUserChangePassword",
+//               "policyArn": "arn:aws:iam::aws:policy/IAMUserChangePassword",
+//               "riskLevel": null
+//             }
+//           ],
+//           "dangerousPolicies": [],
+//           "isFlagged": false,
+//           "reason": "1 policy(s) attached, none are flagged as dangerous — OK."
+//         }
+//       }
+//     }
+//   ]
+// }

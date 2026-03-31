@@ -1,19 +1,15 @@
-import { scanS3BucketPublicAccess } from '../services/scanners/aws/s3Scanner.js';
-import { scanS3BucketEncryption } from '../services/scanners/aws/s3EncryptionScanner.js';
-import { scanEC2SecurityGroups } from '../services/scanners/aws/ec2Scanner.js';
-import { scanIAM } from '../services/scanners/aws/iamScanner.js';
-import { scanRDSInstances } from '../services/scanners/aws/rdsScanner.js';
+import { runSingleScan, runFullScan } from '../services/awsScanOrchestrator.js';
 import CloudCredentials from '../models/CloudCredentials.js';
 import { resolveCredentials } from '../services/credentialManager.js';
 
-// ─── Helper: Resolve credentials from credentialId (if provided) ─────────────
+// ─── Helper: Resolve credentials from credentialId ───────────────────────────
 /**
  * Looks up a CloudCredentials document by ID + userId, then resolves
  * usable AWS credentials (role → AssumeRole, keys → decrypt).
- * Returns null if no credentialId is provided (scanners will use .env fallback).
+ * Returns { creds, credentialId } — creds is null if no credentialId provided.
  */
 async function getCredentials(credentialId, userId) {
-  if (!credentialId) return null;
+  if (!credentialId) return { creds: null, credentialId: null };
 
   const account = await CloudCredentials.findOne({
     _id: credentialId,
@@ -25,7 +21,8 @@ async function getCredentials(credentialId, userId) {
     throw new Error('Account not found or inactive');
   }
 
-  return await resolveCredentials(account);
+  const creds = await resolveCredentials(account);
+  return { creds, credentialId: account._id };
 }
 
 // ─── S3 Public Access ─────────────────────────────────────────────────────────
@@ -37,8 +34,12 @@ export const scanS3PublicAccess = async (req, res) => {
   }
 
   try {
-    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
-    const result = await scanS3BucketPublicAccess(bucketName, creds);
+    const { creds, credentialId } = await getCredentials(
+      req.body?.credentialId || req.query?.credentialId,
+      req.user._id
+    );
+
+    const result = await runSingleScan('s3PublicAccess', req.user._id, credentialId, creds, { bucketName });
     return res.status(200).json(result);
   } catch (error) {
     console.error('S3 Public Access scan error:', error);
@@ -55,8 +56,12 @@ export const scanS3Encryption = async (req, res) => {
   }
 
   try {
-    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
-    const result = await scanS3BucketEncryption(bucketName, creds);
+    const { creds, credentialId } = await getCredentials(
+      req.body?.credentialId || req.query?.credentialId,
+      req.user._id
+    );
+
+    const result = await runSingleScan('s3Encryption', req.user._id, credentialId, creds, { bucketName });
     return res.status(200).json(result);
   } catch (error) {
     console.error('S3 Encryption scan error:', error);
@@ -67,8 +72,12 @@ export const scanS3Encryption = async (req, res) => {
 // ─── EC2 Security Groups ─────────────────────────────────────────────────────
 export const scanEC2 = async (req, res) => {
   try {
-    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
-    const result = await scanEC2SecurityGroups(creds);
+    const { creds, credentialId } = await getCredentials(
+      req.body?.credentialId || req.query?.credentialId,
+      req.user._id
+    );
+
+    const result = await runSingleScan('ec2', req.user._id, credentialId, creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('EC2 scan error:', error);
@@ -79,8 +88,12 @@ export const scanEC2 = async (req, res) => {
 // ─── IAM ──────────────────────────────────────────────────────────────────────
 export const scanIAMUsers = async (req, res) => {
   try {
-    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
-    const result = await scanIAM(creds);
+    const { creds, credentialId } = await getCredentials(
+      req.body?.credentialId || req.query?.credentialId,
+      req.user._id
+    );
+
+    const result = await runSingleScan('iam', req.user._id, credentialId, creds);
     return res.status(200).json(result);
   } catch (error) {
     console.error('IAM scan error:', error);
@@ -93,8 +106,12 @@ export const scanRDS = async (req, res) => {
   const { instanceId } = req.params;
 
   try {
-    const creds = await getCredentials(req.body?.credentialId || req.query?.credentialId, req.user._id);
-    const result = await scanRDSInstances(instanceId, creds);
+    const { creds, credentialId } = await getCredentials(
+      req.body?.credentialId || req.query?.credentialId,
+      req.user._id
+    );
+
+    const result = await runSingleScan('rds', req.user._id, credentialId, creds, { instanceId });
     return res.status(200).json(result);
   } catch (error) {
     console.error('RDS scan error:', error);
@@ -104,77 +121,26 @@ export const scanRDS = async (req, res) => {
 
 // ─── Scan All ─────────────────────────────────────────────────────────────────
 /**
- * Runs all AWS scanners in parallel.
+ * Runs all AWS scanners in parallel, persists a single Scan + all Findings.
  * Request body (all fields optional):
  *   { s3BucketName: string, rdsInstanceId: string, credentialId: string }
- *
- * Scanners that require input are skipped (marked "skipped") if the
- * corresponding field is not provided.
- *
- * If credentialId is provided, credentials are resolved from the user's
- * stored account (role → AssumeRole, keys → decrypt). Otherwise, .env
- * fallback is used.
  */
 export const scanAll = async (req, res) => {
-  const { s3BucketName, rdsInstanceId, credentialId } = req.body ?? {};
+  const { s3BucketName, rdsInstanceId, credentialId: credId } = req.body ?? {};
 
   try {
-    // Resolve credentials once for all scanners
-    const creds = await getCredentials(credentialId, req.user._id);
+    const { creds, credentialId } = await getCredentials(credId, req.user._id);
 
-    // Build a map of scanner name → Promise (or null if skipped)
-    const scanners = {
-      s3PublicAccess: s3BucketName
-        ? scanS3BucketPublicAccess(s3BucketName, creds)
-        : null,
-      s3Encryption: s3BucketName
-        ? scanS3BucketEncryption(s3BucketName, creds)
-        : null,
-      ec2SecurityGroups: scanEC2SecurityGroups(creds),
-      iam: scanIAM(creds),
-      rds: rdsInstanceId
-        ? scanRDSInstances(rdsInstanceId, creds)
-        : scanRDSInstances(undefined, creds),
-    };
-
-    // Separate runnable scanners from skipped ones
-    const entries = Object.entries(scanners);
-    const runnableEntries = entries.filter(([, promise]) => promise !== null);
-    const skippedEntries = entries.filter(([, promise]) => promise === null);
-
-    // Run all non-skipped scanners in parallel — allSettled so one failure
-    // doesn't kill the entire batch
-    const settled = await Promise.allSettled(
-      runnableEntries.map(([, promise]) => promise)
-    );
-
-    // Assemble the results object
-    const results = {};
-
-    runnableEntries.forEach(([name], index) => {
-      const outcome = settled[index];
-      if (outcome.status === 'fulfilled') {
-        results[name] = { status: 'success', data: outcome.value };
-      } else {
-        results[name] = {
-          status: 'error',
-          error: outcome.reason?.message ?? String(outcome.reason),
-        };
-      }
-    });
-
-    skippedEntries.forEach(([name]) => {
-      results[name] = {
-        status: 'skipped',
-        reason: `Required input not provided. Pass ${
-          name.startsWith('s3') ? '"s3BucketName"' : '"rdsInstanceId"'
-        } in the request body to run this scanner.`,
-      };
+    const result = await runFullScan(req.user._id, credentialId, creds, {
+      s3BucketName,
+      rdsInstanceId,
     });
 
     return res.status(200).json({
-      scannedAt: new Date().toISOString(),
-      results,
+      scan: result.scan,
+      findings: result.findings,
+      scannerResults: result.scannerResults,
+      skipped: result.skipped,
     });
   } catch (error) {
     console.error('Scan All error:', error);

@@ -120,6 +120,23 @@ export async function scanS3BucketEncryption(bucketName, credentials) {
 }
 
 
-// scanS3BucketEncryption("test-bucket-17726859966").then((result) => {
-//   console.log(JSON.stringify(result, null, 2));
+// scanS3BucketEncryption("publik-access-bucket").then((result) => {
+  // console.log(JSON.stringify(result, null, 2));
 // });
+
+
+//raw output 
+// {
+//   "bucketName": "publik-access-bucket",
+//   "isEncrypted": true,
+//   "primaryAlgorithm": "AES256",
+//   "reason": "Bucket is encrypted using SSE-S3 (AES-256). Keys are managed by AWS S3.",
+//   "rules": [
+//     {
+//       "sseAlgorithm": "AES256",
+//       "kmsMasterKeyId": null,
+//       "bucketKeyEnabled": false
+//     }
+//   ],
+//   "error": null
+// }

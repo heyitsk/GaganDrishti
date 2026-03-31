@@ -173,3 +173,91 @@ export async function scanEC2SecurityGroups(credentials) {
 // scanEC2SecurityGroups().then((result) => {
 //   console.log(JSON.stringify(result, null, 2));
 // });
+
+//raw output 
+//{
+//   "scannedAt": "2026-03-31T04:57:18.816Z",
+//   "totalGroups": 4,
+//   "flaggedGroups": 2,
+//   "groups": [
+//     {
+//       "groupId": "sg-0ae5bedc8b35d8aff",
+//       "groupName": "default",
+//       "description": "default VPC security group",
+//       "vpcId": "vpc-0f7d5faac8fc60db6",
+//       "isFlagged": false,
+//       "findings": [
+//         {
+//           "protocol": "-1",
+//           "fromPort": null,
+//           "toPort": null,
+//           "ipv4Ranges": [],
+//           "ipv6Ranges": [],
+//           "isOpenToInternet": false,
+//           "isDangerousPort": true,
+//           "isFatal": false,
+//           "reason": "All Traffic (protocol: -1) is a sensitive port but is NOT open to the internet — OK."
+//         }
+//       ]
+//     },
+//     {
+//       "groupId": "sg-0745ead6dba9083f5",
+//       "groupName": "aws-sdk-test",
+//       "description": "allow ssh and web access",
+//       "vpcId": "vpc-0f7d5faac8fc60db6",
+//       "isFlagged": true,
+//       "findings": [
+//         {
+//           "protocol": "tcp",
+//           "fromPort": 8000,
+//           "toPort": 8000,
+//           "ipv4Ranges": [
+//             "0.0.0.0/0"
+//           ],
+//           "ipv6Ranges": [],
+//           "isOpenToInternet": true,
+//           "isDangerousPort": false,
+//           "isFatal": false,
+//           "reason": "Port 8000 is open to the internet but is not a flagged sensitive port — LOW RISK."
+//         },
+//         {
+//           "protocol": "tcp",
+//           "fromPort": 22,
+//           "toPort": 22,
+//           "ipv4Ranges": [
+//             "0.0.0.0/0"
+//           ],
+//           "ipv6Ranges": [
+//             "::/0"
+//           ],
+//           "isOpenToInternet": true,
+//           "isDangerousPort": true,
+//           "isFatal": true,
+//           "reason": "Port 22 is open to the internet (0.0.0.0/0, ::/0) — HIGH RISK."
+//         }
+//       ]
+//     },
+//     {
+//       "groupId": "sg-0e1c9dada0441ce14",
+//       "groupName": "rds-database",
+//       "description": "Created by RDS management console",
+//       "vpcId": "vpc-0f7d5faac8fc60db6",
+//       "isFlagged": false,
+//       "findings": [
+//         {
+//           "protocol": "tcp",
+//           "fromPort": 3306,
+//           "toPort": 3306,
+//           "ipv4Ranges": [
+//             "0.0.0.0/0"
+//           ],
+//           "ipv6Ranges": [],
+//           "isOpenToInternet": true,
+//           "isDangerousPort": false,
+//           "isFatal": false,
+//           "reason": "Port 3306 is open to the internet but is not a flagged sensitive port — LOW RISK."
+//         }
+//       ]
+//     }
+//   ]
+// }
