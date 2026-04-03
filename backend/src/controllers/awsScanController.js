@@ -1,6 +1,7 @@
 import { runSingleScan, runFullScan } from '../services/awsScanOrchestrator.js';
 import CloudCredentials from '../models/CloudCredentials.js';
 import { resolveCredentials } from '../services/credentialManager.js';
+import { scanQueue } from '../config/bullmq.js';
 
 // ─── Helper: Resolve credentials from credentialId ───────────────────────────
 /**
@@ -145,5 +146,118 @@ export const scanAll = async (req, res) => {
   } catch (error) {
     console.error('Scan All error:', error);
     return res.status(500).json({ error: error.message || 'Failed to run scan-all' });
+  }
+};
+
+// ─── Queue: Single Scan ───────────────────────────────────────────────────────
+/**
+ * Enqueues a single-scanner job. Returns 202 + jobId immediately.
+ * Request body: { credentialId, scannerName, params? }
+ *   scannerName: 's3PublicAccess' | 's3Encryption' | 'ec2' | 'iam' | 'rds'
+ *   params: { bucketName?, instanceId? }
+ */
+const VALID_SCANNERS = new Set(['s3PublicAccess', 's3Encryption', 'ec2', 'iam', 'rds']);
+
+export const enqueueSingleScan = async (req, res) => {
+  const { credentialId, scannerName, params = {} } = req.body ?? {};
+
+  if (!credentialId) {
+    return res.status(400).json({ error: 'credentialId is required' });
+  }
+  if (!scannerName) {
+    return res.status(400).json({ error: 'scannerName is required' });
+  }
+  if (!VALID_SCANNERS.has(scannerName)) {
+    return res.status(400).json({
+      error: `Invalid scannerName: "${scannerName}". Valid values are: ${[...VALID_SCANNERS].join(', ')}`,
+    });
+  }
+
+  try {
+    const job = await scanQueue.add('single-scan', {
+      type: 'single',
+      userId: String(req.user._id),
+      credentialId: String(credentialId),
+      scannerName,
+      params,
+    });
+
+    return res.status(202).json({
+      message: 'Scan job queued',
+      jobId: job.id,
+      status: 'queued',
+    });
+  } catch (error) {
+    console.error('Enqueue single scan error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to queue single scan' });
+  }
+};
+
+// ─── Queue: Full Scan ─────────────────────────────────────────────────────────
+/**
+ * Enqueues a full-scan job (all scanners). Returns 202 + jobId immediately.
+ * Request body: { credentialId, options? }
+ *   options: { s3BucketName?, rdsInstanceId? }
+ */
+export const enqueueFullScan = async (req, res) => {
+  const { credentialId, options = {} } = req.body ?? {};
+
+  if (!credentialId) {
+    return res.status(400).json({ error: 'credentialId is required' });
+  }
+
+  try {
+    const job = await scanQueue.add('full-scan', {
+      type: 'full',
+      userId: String(req.user._id),
+      credentialId: String(credentialId),
+      options,
+    });
+
+    return res.status(202).json({
+      message: 'Full scan job queued',
+      jobId: job.id,
+      status: 'queued',
+    });
+  } catch (error) {
+    console.error('Enqueue full scan error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to queue full scan' });
+  }
+};
+
+// ─── Queue: Job Status ────────────────────────────────────────────────────────
+/**
+ * Polls the status of a queued scan job.
+ * Returns BullMQ job state + result (scan _id, findings count) when completed.
+ */
+export const getJobStatus = async (req, res) => {
+  const { jobId } = req.params;
+
+  try {
+    const job = await scanQueue.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({ error: `Job ${jobId} not found` });
+    }
+
+    const state = await job.getState();   // 'waiting' | 'active' | 'completed' | 'failed'
+    const result = job.returnvalue ?? null;
+    const failReason = job.failedReason ?? null;
+
+    // Return 422 whenever the job has errored — covers both:
+    //   'failed'  → exhausted all retry attempts
+    //   'delayed' → failed but BullMQ is about to retry (failedReason is already set)
+    const httpStatus = failReason ? 422 : 200;
+
+    return res.status(httpStatus).json({
+      jobId,
+      state,
+      jobName: job.name,
+      ...(result && { result }),
+      ...(failReason && { error: failReason }),
+    });
+  } catch (error) {
+    console.error('Get job status error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to get job status' });
   }
 };

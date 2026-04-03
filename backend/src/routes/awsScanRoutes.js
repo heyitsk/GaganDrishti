@@ -7,6 +7,9 @@ import {
   scanIAMUsers,
   scanRDS,
   scanAll,
+  enqueueSingleScan,
+  enqueueFullScan,
+  getJobStatus,
 } from '../controllers/awsScanController.js';
 
 const router = express.Router();
@@ -23,5 +26,10 @@ router.get('/rds{/:instanceId}', scanRDS);    // instanceId is optional
 
 // ─── Unified Scan ─────────────────────────────────────────────────────────────
 router.post('/all', scanAll);
+
+// ─── Async Queue Routes (202 + jobId) ─────────────────────────────────────────
+router.post('/queue/single', enqueueSingleScan);  // POST /api/aws/scan/queue/single
+router.post('/queue/all',    enqueueFullScan);    // POST /api/aws/scan/queue/all
+router.get('/job/:jobId',    getJobStatus);       // GET  /api/aws/scan/job/:jobId
 
 export default router;

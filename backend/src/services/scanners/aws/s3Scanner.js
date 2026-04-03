@@ -155,6 +155,25 @@ export async function scanS3BucketPublicAccess(bucketName, credentials) {
     checkPublicAccessBlock(client, bucketName),
   ]);
 
+  // ── Detect hard bucket-level errors (e.g. bucket doesn't exist) ──────────
+  // All three sub-checks getting NoSuchBucket means the bucket simply doesn't
+  // exist. Return a top-level error so the orchestrator can fail the scan.
+  const allErrors = [policyResult.error, aclResult.error, blockResult.error].filter(Boolean);
+  const bucketNotFound = allErrors.some((e) => e.includes('NoSuchBucket'));
+  if (bucketNotFound) {
+    return {
+      bucketName,
+      isPublic: false,
+      error: `NoSuchBucket: The bucket "${bucketName}" does not exist or is not accessible.`,
+      reason: `Bucket "${bucketName}" does not exist.`,
+      details: {
+        policy: { isPublic: false, channelBlocked: false, error: policyResult.error },
+        acl: { isPublic: false, channelBlocked: false, error: aclResult.error },
+        publicAccessBlock: { error: blockResult.error },
+      },
+    };
+  }
+
   // ── Apply channel-aware block logic ──────────────────────────────────────
   // Policy channel: blocked if either of the two policy-related flags is true
   const policyChannelBlocked =

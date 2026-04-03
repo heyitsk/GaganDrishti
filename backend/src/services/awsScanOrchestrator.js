@@ -307,6 +307,12 @@ export async function runSingleScan(scannerName, userId, credentialId, creds, pa
         throw new Error(`Unknown scanner: ${scannerName}`);
     }
 
+    // If the scanner reported a hard error (e.g. bucket doesn't exist, RDS instance not found),
+    // fail the scan rather than completing it silently with 0 findings.
+    if (rawResult?.error) {
+      throw new Error(rawResult.error);
+    }
+
     // Persist findings
     const savedFindings = findings.length > 0
       ? await Finding.insertMany(findings)

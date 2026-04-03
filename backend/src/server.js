@@ -10,6 +10,7 @@ import accountRoutes from "./routes/accountRoutes.js";
 import scanRoutes from "./routes/scanRoutes.js";
 import credentialRoutes from "./routes/credentialRoutes.js";
 import configurePassport from "./config/passport.js";
+import "./workers/scanWorker.js";   // boots the scan queue worker in-process
 
 const app = express();
 
