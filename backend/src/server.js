@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import awsScanRoutes from "./routes/awsScanRoutes.js";
 import accountRoutes from "./routes/accountRoutes.js";
 import scanRoutes from "./routes/scanRoutes.js";
+import credentialRoutes from "./routes/credentialRoutes.js";
 import configurePassport from "./config/passport.js";
 
 const app = express();
@@ -24,6 +25,7 @@ app.use(passport.initialize());
 app.use("/api/auth", authRoutes);
 app.use("/api/aws/scan", awsScanRoutes);
 app.use("/api/accounts", accountRoutes);
+app.use("/api/credentials", credentialRoutes);
 app.use("/api", scanRoutes);
 
 // Database connection and server start
