@@ -323,3 +323,49 @@ export const getDashboardStats = async (req, res) => {
     return res.status(500).json({ error: error.message || 'Failed to fetch dashboard stats' });
   }
 };
+
+// ─── PATCH /findings/:id/resolve — Mark a finding as resolved ────────────────
+export const resolveFinding = async (req, res) => {
+  try {
+    const findingId = req.params.id;
+    
+    const finding = await Finding.findOne({ 
+      _id: findingId, 
+      userId: req.user._id 
+    });
+
+    if (!finding) {
+      return res.status(404).json({ error: 'Finding not found' });
+    }
+
+    await finding.resolve();
+
+    return res.status(200).json({ message: 'Finding resolved successfully', finding });
+  } catch (error) {
+    console.error('Resolve finding error:', error);
+    return res.status(500).json({ error: 'Failed to resolve finding' });
+  }
+};
+
+// ─── PATCH /findings/:id/ignore — Mark a finding as ignored ────────────────
+export const ignoreFinding = async (req, res) => {
+  try {
+    const findingId = req.params.id;
+    
+    const finding = await Finding.findOne({ 
+      _id: findingId, 
+      userId: req.user._id 
+    });
+
+    if (!finding) {
+      return res.status(404).json({ error: 'Finding not found' });
+    }
+
+    await finding.ignore();
+
+    return res.status(200).json({ message: 'Finding ignored successfully', finding });
+  } catch (error) {
+    console.error('Ignore finding error:', error);
+    return res.status(500).json({ error: 'Failed to ignore finding' });
+  }
+};
