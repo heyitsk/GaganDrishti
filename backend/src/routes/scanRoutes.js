@@ -6,6 +6,7 @@ import {
   getScanFindings,
   getFindings,
   getDashboardStats,
+  getTimeline,
 } from '../controllers/scanController.js';
 
 const router = express.Router();
@@ -19,6 +20,8 @@ router.get('/scans/:id', getScanDetails);
 router.get('/scans/:id/findings', getScanFindings);
 
 // ─── Findings ─────────────────────────────────────────────────────────────────
+// NOTE: /findings/timeline must come before any /findings/:id route
+router.get('/findings/timeline', getTimeline);
 router.get('/findings', getFindings);
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────

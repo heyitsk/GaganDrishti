@@ -144,6 +144,102 @@ export const getFindings = async (req, res) => {
   }
 };
 
+// ─── GET /findings/timeline — Track findings detected over time ───────────────
+/**
+ * Query params:
+ *   ?granularity=day          — bucketing unit: day | week | month (default: day)
+ *   ?startDate=2026-03-01     — ISO date (default: 30 days ago)
+ *   ?endDate=2026-04-01       — ISO date (default: today)
+ *   ?service=S3               — filter by service (case-insensitive)
+ *   ?severity=CRITICAL        — filter by severity
+ */
+export const getTimeline = async (req, res) => {
+  try {
+    const { granularity = 'day', service, severity } = req.query;
+
+    // ── Date window ────────────────────────────────────────────────────────────
+    const endDate = req.query.endDate
+      ? new Date(req.query.endDate)
+      : new Date();
+    const startDate = req.query.startDate
+      ? new Date(req.query.startDate)
+      : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Validate parsed dates
+    if (isNaN(startDate) || isNaN(endDate)) {
+      return res.status(400).json({ error: 'Invalid startDate or endDate' });
+    }
+
+    // ── Granularity → $dateToString format ────────────────────────────────────
+    const formatMap = { day: '%Y-%m-%d', week: '%Y-%U', month: '%Y-%m' };
+    const dateFormat = formatMap[granularity] ?? '%Y-%m-%d';
+
+    // ── Match filter ──────────────────────────────────────────────────────────
+    const match = {
+      userId: req.user._id,
+      detectedAt: { $gte: startDate, $lte: endDate },
+    };
+
+    if (service) {
+      match.service = { $regex: new RegExp(`^${service}$`, 'i') };
+    }
+
+    if (severity) {
+      const validSeverities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+      const upper = severity.toUpperCase();
+      if (validSeverities.includes(upper)) {
+        match.severity = upper;
+      }
+    }
+
+    // ── Aggregation ───────────────────────────────────────────────────────────
+    const buckets = await Finding.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: dateFormat, date: '$detectedAt' } },
+          new: { $sum: 1 },
+          CRITICAL: { $sum: { $cond: [{ $eq: ['$severity', 'CRITICAL'] }, 1, 0] } },
+          HIGH:     { $sum: { $cond: [{ $eq: ['$severity', 'HIGH']     }, 1, 0] } },
+          MEDIUM:   { $sum: { $cond: [{ $eq: ['$severity', 'MEDIUM']   }, 1, 0] } },
+          LOW:      { $sum: { $cond: [{ $eq: ['$severity', 'LOW']      }, 1, 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // ── Shape response ────────────────────────────────────────────────────────
+    const timeline = buckets.map((b) => ({
+      date: b._id,
+      new: b.new,
+      bySeverity: {
+        CRITICAL: b.CRITICAL,
+        HIGH:     b.HIGH,
+        MEDIUM:   b.MEDIUM,
+        LOW:      b.LOW,
+      },
+    }));
+
+    const totalInWindow = timeline.reduce((sum, b) => sum + b.new, 0);
+
+    // ── Trend ─────────────────────────────────────────────────────────────────
+    let trend = 'stable';
+    if (timeline.length >= 2) {
+      const mid = Math.floor(timeline.length / 2);
+      const avg = (arr) => arr.reduce((s, b) => s + b.new, 0) / arr.length;
+      const firstAvg  = avg(timeline.slice(0, mid));
+      const secondAvg = avg(timeline.slice(mid));
+      if (secondAvg > firstAvg) trend = 'increasing';
+      else if (secondAvg < firstAvg) trend = 'decreasing';
+    }
+
+    return res.status(200).json({ timeline, trend, totalInWindow });
+  } catch (error) {
+    console.error('Timeline error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch timeline' });
+  }
+};
+
 // ─── GET /dashboard/stats — Summary statistics ───────────────────────────────
 export const getDashboardStats = async (req, res) => {
   try {
