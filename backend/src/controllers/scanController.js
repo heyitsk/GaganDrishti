@@ -95,6 +95,10 @@ export const getFindings = async (req, res) => {
     // Build filter
     const filter = { userId: req.user._id };
 
+    if (req.query.scanId) {
+      filter.scanId = req.query.scanId;
+    }
+
     if (severity) {
       const validSeverities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
       const upper = severity.toUpperCase();
