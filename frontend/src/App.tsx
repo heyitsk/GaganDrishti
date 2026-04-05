@@ -6,6 +6,7 @@ import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/Dashboard";
 import FindingsPage from "@/pages/Findings";
 import ScansPage from "@/pages/Scans";
+import AccountsPage from "@/pages/Accounts";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 
@@ -23,7 +24,7 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/accounts" element={<div className="p-8 text-white">Accounts Page (Coming Soon)</div>} />
+            <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/scans" element={<ScansPage />} />
             <Route path="/findings" element={<FindingsPage />} />
             <Route path="/settings" element={<div className="p-8 text-white">Settings (Coming Soon)</div>} />
