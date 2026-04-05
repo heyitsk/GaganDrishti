@@ -1,198 +1,86 @@
 # 🔐 Gagandrishti — Security Rules Definition
 
-This document defines the security detection rules used by **Gagandrishti** to
-identify cloud misconfigurations that can lead to real-world cyber attacks.
+This document maps all cloud auditing detection rules natively implemented within the Gagandrishti backend scanner orchestration system (`awsScanOrchestrator.js`). 
 
-The rules are designed with a focus on **preventive security**, **clarity**,
-and **actionable remediation**, aligned with common cloud breach patterns.
-
-Rules are based on real-world attack scenarios and security best practices.
-
-# ALERTS
-
-Rule 1: Public Cloud Storage
-
-- Detect publicly accessible storage
-- Risk: HIGH
-- Impact: Data leakage
-- Fix: Disable public access
-
-Rule 2: Open Management Ports
-
-- Detect SSH/RDP open to 0.0.0.0/0
-- Risk: HIGH
-- Impact: Unauthorized access
-- Fix: Restrict IPs / VPN
-
-Rule 3: Over-Permissive IAM
-
--Detect admin or wildcard permissions
--Risk: MEDIUM/HIGH
--Impact: Privilege escalation
--Fix: Least privilege
-
-
---------------------------------------------------------------------------------------------------------------------------------------------
-
-## 📌 Rule Structure
-
-Each security rule follows the structure below:
-
-- Rule ID
-- Rule Name
-- Category
-- Description
-- Detection Logic
-- Risk Level
-- Security Impact
-- Remediation
+All findings adhere to structural standards dictating rule ID, severity calculation logic (from `CRITICAL` down to `LOW`), and actionable remediation strategies.
 
 ---
 
-## 🔴 RULE 001 – Public Cloud Storage Exposure
+## ☁️ Amazon S3 Configurations
 
-**Rule ID:** GGD-CS-001  
-**Rule Name:** Public Cloud Storage Exposure  
-**Category:** Data Exposure / Misconfiguration  
+### GGD-S3-001: Public Cloud Storage Exposure
+- **Service**: S3
+- **Severity**: HIGH
+- **Description**: The bucket lacks robust "Block Public Access" configurations, and evaluation dictates the bucket policy or external ACLs allow public entities to read (or write) internal objects.
+- **Remediation**: Review and restrict the S3 bucket policy and ACL settings. Forcefully enable "Block Public Access" at the bucket or account level.
 
-### Description
-Detects cloud storage resources that are publicly accessible, allowing
-unauthorized users to read or write sensitive data.
-
-### Detection Logic
-- Check if cloud storage resources (e.g., object storage buckets) allow public access  
-- Identify public ACLs or access policies granting permissions to `AllUsers` or `Everyone`
-
-### Risk Level
-**HIGH**
-
-### Security Impact
-Publicly exposed storage can result in:
-- Sensitive data leakage  
-- Regulatory and compliance violations  
-- Unauthorized data modification or deletion  
-
-### Remediation
-- Disable public access  
-- Apply least-privilege access policies  
-- Enable encryption and access logging  
+### GGD-S3-002: Default Data Encryption Disabled
+- **Service**: S3
+- **Severity**: MEDIUM
+- **Description**: The bucket is not enforcing server-side encryption configurations at rest. 
+- **Remediation**: Enable default server-side encryption (SSE-S3 or SSE-KMS) on the bucket immediately.
 
 ---
 
-## 🔴 RULE 002 – Open Management Ports to Internet
+## 🛡️ Elastic Compute Cloud (EC2)
 
-**Rule ID:** GGD-CS-002  
-**Rule Name:** Open Management Ports to Internet  
-**Category:** Network Exposure / Misconfiguration  
-
-### Description
-Identifies cloud network configurations where critical management ports are
-exposed directly to the public internet.
-
-### Detection Logic
-- Inspect firewall or security group rules  
-- Identify inbound rules allowing `0.0.0.0/0` on:
-  - Port 22 (SSH)
-  - Port 3389 (RDP)
-
-### Risk Level
-**HIGH**
-
-### Security Impact
-Open management ports enable:
-- Brute-force login attacks  
-- Unauthorized remote system access  
-- Full system compromise  
-
-### Remediation
-- Restrict access to trusted IP ranges  
-- Use bastion hosts or VPN access  
-- Disable unused management ports  
+### GGD-EC2-001: Internet-exposed Dangerous Ports
+- **Service**: EC2 Security Group
+- **Severity**: CRITICAL
+- **Description**: Security groups inherently tied to VPCs flag open global access (`0.0.0.0/0`) targeting dangerous management ports such as `SSH (22)`, `RDP (3389)`, or completely unconstrained inbound access.
+- **Remediation**: Restrict inbound rules to specific IP ranges or VPN egress networks. Never allow 0.0.0.0/0 access to sensitive TCP boundaries.
 
 ---
 
-## 🟡 RULE 003 – Over-Permissive IAM Roles
+## 🛂 Identity & Access Management (IAM)
 
-**Rule ID:** GGD-CS-003  
-**Rule Name:** Over-Permissive IAM Permissions  
-**Category:** Identity & Access Management  
+### GGD-IAM-001: Root Account Lacks Hardware MFA
+- **Service**: IAM
+- **Severity**: CRITICAL
+- **Description**: The primary (Root) AWS account possesses unrestricted ownership and currently has no Multi-Factor Authentication token tied to its access paradigm.
+- **Remediation**: Enable MFA on the root account immediately. Implement physical token (Hardware MFA) for maximum protection.
 
-### Description
-Detects IAM users or roles that have excessive permissions beyond their
-operational requirements.
+### GGD-IAM-002: IAM User Console Access Disabled MFA
+- **Service**: IAM
+- **Severity**: HIGH
+- **Description**: Individual users with AWS Management Console access have not activated MFA, exposing their credential pipeline to weak-password brute manipulations.
+- **Remediation**: Force MFA for this IAM user or revoke console access explicitly.
 
-### Detection Logic
-- Identify IAM policies containing wildcard permissions (`*:*`)  
-- Detect attachment of administrator-level roles to users or services  
+### GGD-IAM-003: Over-Permissive Managed Policies
+- **Service**: IAM
+- **Severity**: CRITICAL / HIGH / MEDIUM *(Dynamic)*
+- **Description**: Identifies attached IAM policies exposing wildcard (`*:*`) administration-level access. Severity calculates dynamically if the bound user can trigger high-risk administrative disruptions.
+- **Remediation**: Replace broad managed policies with least-privilege custom policies specifically scoped to the internal operational boundary of the IAM principal.
 
-### Risk Level
-**MEDIUM / HIGH** (based on usage context)
-
-### Security Impact
-Over-permissive access can lead to:
-- Privilege escalation  
-- Amplified impact of account compromise  
-- Unauthorized resource creation, deletion, or modification  
-
-### Remediation
-- Apply the principle of least privilege  
-- Remove unused or excessive permissions  
-- Perform periodic IAM access reviews  
+### GGD-IAM-004: Stale Access Credentials
+- **Service**: IAM
+- **Severity**: MEDIUM
+- **Description**: Identifies active programmatic Access Keys belonging to a user that haven't rotated or have lain dormant outside the standardized 90-day compliance cycle.
+- **Remediation**: Rotate or explicitly delete stale and unused access keys to reduce static credential exposure.
 
 ---
 
-## 🔵 RULE 004 – Missing Encryption on Cloud Resources  
-*(Optional – Future Scope)*
+## 🗄️ Relational Database Service (RDS)
 
-**Rule ID:** GGD-CS-004  
-**Rule Name:** Encryption Disabled  
-**Category:** Data Protection  
+### GGD-RDS-001: Direct Internet Gateway Exposure
+- **Service**: RDS
+- **Severity**: CRITICAL
+- **Description**: The instance explicitly enables `PubliclyAccessible` properties on a network tier while binding to overly-permissive ingress Security Groups.
+- **Remediation**: Disable public accessibility on this RDS instance and restrict ingress strictly to internal peered Subnets or verified Private CIDRs.
 
-### Description
-Detects cloud resources where encryption at rest is not enabled.
-
-### Detection Logic
-- Check encryption settings on storage services and databases  
-
-### Risk Level
-**MEDIUM**
-
-### Security Impact
-Unencrypted data can be:
-- Exposed during unauthorized access  
-- Non-compliant with security and regulatory standards  
-
-### Remediation
-- Enable encryption at rest  
-- Use managed key management services  
+### GGD-RDS-002: Unencrypted Storage Volumes
+- **Service**: RDS
+- **Severity**: HIGH
+- **Description**: Backend storage subsystems tied to the Database instance lack cryptographic keys (KMS) assigned for encryption at rest.
+- **Remediation**: Enable storage encryption. *(Note: AWS forbids toggling encryption directly on existing active instances. Encrypt a manual snapshot replica and initialize a restored cluster).*
 
 ---
 
-## 🧠 Severity Classification Logic
+## 🧠 Risk Level Baseline Definitions
 
-| Severity | Meaning |
-|--------|--------|
-| HIGH | Directly exploitable from the internet |
-| MEDIUM | Exploitable after initial access |
-| LOW | Best-practice violation (not included in MVP) |
-
----
-
-## 🎯 Design Philosophy
-
-Gagandrishti focuses on:
-- Preventive security  
-- Explainable findings  
-- Actionable remediation  
-- Minimal alert noise  
-
-The system operates with **read-only access** and **never modifies cloud
-resources**.
-
----
-
-## 👤 Ownership
-
-This document is maintained by the **Security Team Lead**.  
-All backend detection logic and UI representation **must strictly follow**
-these defined rules.
+| Severity Level | Structural Definition |
+|---|---|
+| **CRITICAL** | Directly exploitable entry mechanisms resulting in immediate full-system or data compromise. Direct internet boundary violations and Root administration failures. |
+| **HIGH** | Significant misconfiguration directly facilitating downstream lateral access jumps or high-yield data exposure. |
+| **MEDIUM** | Compliance boundary failures or architectural gaps that, while not directly exploitable, degrade defensive layering or assist post-exploitation chains. |
+| **LOW** | *(System defined but unused strictly here)* Best-practice violation generating excessive configuration sprawl or metadata leaks. |
