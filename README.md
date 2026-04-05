@@ -40,7 +40,7 @@ Ensure you have [Docker](https://www.docker.com/) installed, then run from the r
 ```bash
 docker compose up -d --build
 ```
-- **Frontend Dashboard:** `http://localhost:3000`
+- **Frontend Dashboard:** `http://localhost:8080`
 - **Backend API:** `http://localhost:5000`
 *(Note: Ensure you have populated `backend/.env` with your desired configuration, AWS keys, and MongoDB URI before building).*
 

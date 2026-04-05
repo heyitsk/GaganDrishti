@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PlayCircle, CheckCircle2, AlertCircle, RefreshCw, Activity, Layers, Clock, ArrowRight } from "lucide-react";
+import { PlayCircle, CheckCircle2, AlertCircle, Activity, Layers, Clock, ArrowRight } from "lucide-react";
 import api from "@/lib/axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
