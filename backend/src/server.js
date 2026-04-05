@@ -10,9 +10,13 @@ import accountRoutes from "./routes/accountRoutes.js";
 import scanRoutes from "./routes/scanRoutes.js";
 import credentialRoutes from "./routes/credentialRoutes.js";
 import configurePassport from "./config/passport.js";
-import "./workers/scanWorker.js";   // boots the scan queue worker in-process
+import { checkRedisConnection } from "./config/bullmq.js";
+
+
+import { initIO } from "./config/socket.js";
 
 const app = express();
+
 
 // Middleware
 app.use(express.json());
@@ -35,16 +39,24 @@ app.use("/api/credentials", credentialRoutes);
 app.use("/api", scanRoutes);
 
 // Database connection and server start
-connectCluster()
-  .then(() => {
-    console.log("✅ Database connection established");
+Promise.all([
+  connectCluster().then(() => console.log("✅ Database connection established")),
+  checkRedisConnection() // logs its own success message
+])
+  .then(async () => {
+    // Boot the scan queue worker ONLY after verifying Redis is actually up
+    await import("./workers/scanWorker.js"); 
+    
     const server = app.listen(process.env.PORT || 5000, () => {
       console.log(
         `🚀 Server successfully listening on port ${process.env.PORT || 5000}`
       );
     });
+    
+    // Initialize WebSockets bcz web sockets use exisiting http connection to setup and initialise
+    initIO(server);
   })
   .catch((err) => {
-    console.error("❌ Database connection failed:", err.message);
-    process.exit(1); // Exit process if DB connection fails
+    console.error("❌ Startup failed due to connection error:", err.message);
+    process.exit(1); // Exit process if DB or Redis connection fails
   });
