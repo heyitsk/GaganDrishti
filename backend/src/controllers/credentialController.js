@@ -8,7 +8,7 @@ import CloudCredentials from '../models/CloudCredentials.js';
 export const listCredentials = async (req, res) => {
   try {
     const credentials = await CloudCredentials.find(
-      { userId: req.user._id, isActive: true },          // filter: all active creds for this user
+      { userId: req.user._id, isActive: true, isValidated: true },          // filter: all active and validated creds for this user
       { _id: 1, accountName: 1, provider: 1 }            // projection: return only these fields
     ).lean();      // plain JS objects, no Mongoose overhead
     

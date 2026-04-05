@@ -104,6 +104,10 @@ const cloudCredentialsSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isValidated: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -153,6 +157,7 @@ cloudCredentialsSchema.methods.toSafeJSON = function () {
     authType: this.authType,
     region: this.region,
     isActive: this.isActive,
+    isValidated: this.isValidated,
     createdAt: this.createdAt,
   };
 

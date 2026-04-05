@@ -64,9 +64,10 @@ export const listAccounts = async (req, res) => {
 export const validateAccount = async (req, res) => {
   const { id } = req.params;
 
+  let account;
   try {
     // 1. Find account (must belong to the authenticated user)
-    const account = await CloudCredentials.findOne({
+    account = await CloudCredentials.findOne({
       _id: id,
       userId: req.user._id,
     });
@@ -81,10 +82,19 @@ export const validateAccount = async (req, res) => {
     // 3. Validate with STS:GetCallerIdentity
     const result = await validateCredentials(creds);
 
+    account.isValidated = result.valid;
+    await account.save();
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('Validate account error:', error);
-    return res.status(500).json({
+    
+    if (account) {
+      account.isValidated = false;
+      await account.save();
+    }
+
+    return res.status(200).json({
       valid: false,
       error: error.message || 'Failed to validate account credentials',
     });
