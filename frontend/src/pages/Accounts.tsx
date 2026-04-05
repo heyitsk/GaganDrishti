@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import api from "@/lib/axios";
 
+
 // --- Types ---
 interface Account {
   _id: string;
@@ -31,6 +32,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [validatingId, setValidatingId] = useState<string | null>(null);
+  const [validationStatus, setValidationStatus] = useState<Record<string, "success" | "error">>({});
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,7 +55,16 @@ export default function AccountsPage() {
     setLoading(true);
     try {
       const res = await api.get("/accounts");
-      setAccounts(res.data.accounts || []);
+      const fetchedAccounts = res.data.accounts || [];
+      setAccounts(fetchedAccounts);
+      
+      const statusMap: Record<string, "success" | "error"> = {};
+      fetchedAccounts.forEach((acc: any) => {
+        if (acc.isValidated) {
+          statusMap[acc._id] = "success";
+        }
+      });
+      setValidationStatus(statusMap);
     } catch (err) {
       toast.error("Failed to load accounts");
       console.error(err);
@@ -145,15 +156,24 @@ export default function AccountsPage() {
 
   const handleValidate = async (id: string) => {
     setValidatingId(id);
+    setValidationStatus(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     try {
       const res = await api.post(`/accounts/${id}/validate`);
       if (res.data.valid) {
         toast.success("Account validation successful");
+        setValidationStatus(prev => ({ ...prev, [id]: "success" }));
       } else {
         toast.error(`Validation failed: ${res.data.error || "Unknown error"}`);
+        setValidationStatus(prev => ({ ...prev, [id]: "error" }));
       }
     } catch (error) {
+      console.log(error);
       toast.error((error as any).response?.data?.error || "Failed to validate account");
+      setValidationStatus(prev => ({ ...prev, [id]: "error" }));
     } finally {
       setValidatingId(null);
     }
@@ -270,12 +290,20 @@ export default function AccountsPage() {
                 <button 
                   onClick={() => handleValidate(account._id)}
                   disabled={validatingId === account._id}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
+                    validationStatus[account._id] === "error"
+                      ? "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      : validationStatus[account._id] === "success"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                      : "bg-slate-800 border-slate-700/50 text-slate-200 hover:bg-slate-700"
+                  }`}
                 >
                   {validatingId === account._id ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : validationStatus[account._id] === "error" ? (
+                    <X className="h-4 w-4" />
                   ) : (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <CheckCircle2 className="h-4 w-4" />
                   )}
                   Validate
                 </button>

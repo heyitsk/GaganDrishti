@@ -7,6 +7,7 @@ import {
   Settings,
   LogOut,
   Shield,
+  PlayCircle,
 } from "lucide-react";
 
 export function Sidebar() {
@@ -15,6 +16,7 @@ export function Sidebar() {
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Run Scan", href: "/scan", icon: PlayCircle },
     { name: "Accounts", href: "/accounts", icon: Cloud },
     { name: "Scan History", href: "/scans", icon: History },
     { name: "Findings", href: "/findings", icon: ShieldAlert },

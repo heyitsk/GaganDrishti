@@ -7,6 +7,7 @@ import DashboardPage from "@/pages/Dashboard";
 import FindingsPage from "@/pages/Findings";
 import ScansPage from "@/pages/Scans";
 import AccountsPage from "@/pages/Accounts";
+import RunScanPage from "@/pages/RunScan";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 
@@ -25,6 +26,7 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/scan" element={<RunScanPage />} />
             <Route path="/scans" element={<ScansPage />} />
             <Route path="/findings" element={<FindingsPage />} />
             <Route path="/settings" element={<div className="p-8 text-white">Settings (Coming Soon)</div>} />

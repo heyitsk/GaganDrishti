@@ -14,6 +14,7 @@ import {
   Cell,
 } from "recharts";
 import api from "@/lib/axios";
+import { initSocket } from "@/lib/socket";
 
 interface DashboardStats {
   totalScans: number;
@@ -45,19 +46,36 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchStats = async () => {
+    try {
+      const res = await api.get("/dashboard/stats");
+      setStats(res.data);
+    } catch (err) {
+      console.error("Failed to fetch dashboard stats", err);
+    } finally {
+      // Even on subsequent silent reloads, loading will simply remain false ensuring no flicker
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get("/dashboard/stats");
-        setStats(res.data);
-      } catch (err) {
-        console.error("Failed to fetch dashboard stats", err);
-      } finally {
-        setLoading(false);
+    fetchStats();
+
+    // ─── Socket.IO Live Updates ───────────────────────────────────────────────
+    const socket = initSocket();
+    
+    const handleScanUpdate = (data: { jobId: string; state: string }) => {
+      // Silently reload the entire dashboard stats organically without a toast
+      if (data.state === "completed") {
+        fetchStats();
       }
     };
-
-    fetchStats();
+    
+    socket.on("scanUpdate", handleScanUpdate);
+    
+    return () => {
+      socket.off("scanUpdate", handleScanUpdate);
+    };
   }, []);
 
   if (loading || !stats) {
